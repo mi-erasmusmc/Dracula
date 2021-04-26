@@ -1,9 +1,6 @@
 CREATE TABLE ctgov.reported_events_2 AS
 SELECT DISTINCT re.id,
                 re.nct_id,
-                re.ctgov_group_code,
-                re.id,
-                re.nct_id,
                 re.result_group_id,
                 re.ctgov_group_code,
                 re.time_frame,
