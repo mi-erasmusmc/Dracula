@@ -1,5 +1,25 @@
 CREATE TABLE ctgov.reported_events_2 AS
-SELECT DISTINCT re.*, m.pt_code
+SELECT DISTINCT re.id,
+                re.nct_id,
+                re.ctgov_group_code,
+                re.id,
+                re.nct_id,
+                re.result_group_id,
+                re.ctgov_group_code,
+                re.time_frame,
+                re.event_type,
+                re.default_vocab,
+                re.default_assessment,
+                re.subjects_affected,
+                re.subjects_at_risk,
+                re.description,
+                re.event_count,
+                re.organ_system,
+                re.adverse_event_term,
+                re.frequency_threshold,
+                re.vocab,
+                re.assessment,
+                m.pt_code
 FROM ctgov.reported_events re
          LEFT JOIN meddra.mdhier m ON lower(m.pt_name) = lower(re.adverse_event_term);
 
