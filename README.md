@@ -5,7 +5,7 @@ Dracula - A Clinical Trials Drug - Adverse Event Mapper
 does two things: First, it generates an additional table called 'rg_intervention' that links the reported adverse events
 from the 'result_groups' table to an RxNorm ID of the drugs provided to the specific group for which this adverse event
 occurred. Second it adds an additional pt_code column to the reported_events table containing the MedDRA preferred term
-code for the specific adverse event.
+code for the specific adverse event.**
 
 Note:
 The master branch of this project should work, but the project as whole is still under construction. Although a decent
@@ -14,7 +14,7 @@ much welcome.
 
 ### REQUIREMENTS
 
-- CTDAM builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/) system, you will need to download and
+- Dracula builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/) system, you will need to download and
   start that database before doing this :-)
 
 - You will need the RxNORM database, in particular both the RXNCONSO table and the RXNREL talbe. The RxNorm data is
