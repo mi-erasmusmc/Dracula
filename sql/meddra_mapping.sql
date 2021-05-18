@@ -11,6 +11,11 @@ CREATE TABLE ctgov.rg_meddra_map
 );
 
 
+-- name: update_general_disorders
+UPDATE ctgov.reported_events
+SET organ_system = 'General disorders and administration site conditions'
+WHERE organ_system = 'General disorders';
+
 -- name: find_unknown_terms
 SELECT lower(e.adverse_event_term)
 FROM ctgov.reported_events e

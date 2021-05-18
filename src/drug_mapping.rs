@@ -4,7 +4,7 @@ use std::error::Error;
 
 use deadpool_postgres::tokio_postgres::Row;
 use deadpool_postgres::Pool;
-use log::{info, warn};
+use log::{debug, info, warn};
 use pbr::ProgressBar;
 use rawsql::Loader;
 
@@ -80,7 +80,7 @@ async fn load_art57(pool: &Pool) {
     let pwd = env::current_dir().unwrap();
     let pwd = pwd.to_str().unwrap();
     let path = format!("'{}/{}'", pwd, "resources/art57_rxnorm.tsv");
-    println!("{}", path);
+    debug!("{}", path);
     let query = format!(
         "DROP TABLE IF EXISTS ctgov.article57_rxnorm;
         CREATE TABLE ctgov.article57_rxnorm (name TEXT,	ingredient TEXT,	rxcui TEXT);
@@ -268,4 +268,6 @@ fn do_matching(
             }
         }
     }
+    pb.finish();
+    println!();
 }

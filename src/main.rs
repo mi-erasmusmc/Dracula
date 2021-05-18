@@ -58,7 +58,8 @@ fn init_logger() {
         .format(|buf, record| {
             writeln!(
                 buf,
-                "[{}] {}",
+                "[{}] [{}] {}",
+                record.level(),
                 Local::now().format("%Y-%m-%d %H:%M:%S"),
                 record.args()
             )

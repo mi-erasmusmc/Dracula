@@ -17,14 +17,14 @@ much welcome.
 - Dracula builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/) system, you will need to download and
   start that database before doing this :-)
 
-- You will need the RxNORM database, in particular both the RXNCONSO table and the RXNREL talbe. The RxNorm data is
+- You will need the RxNORM database, in particular both the RXNCONSO table and the RXNREL table. The RxNorm data is
   available
   [here](https://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html) (db is free but registration is required).
   The app expects the two tables to be located within the aact ctgov schema.
 
 - If you also to wish to perform additional standardization on the outcome side you require the MedDRA db. Some effort
   is required to obtain the MedDRA db so this step is optional. If you do have the MedDRA db be sure it is in the same
-  db in a schema named 'meddra', we will be using only the 'medhier' table.
+  db in a schema named 'meddra', we will be using the 'medhier' and 'llt' tables.
 
 - To build and run the app you will need [Rust](www.rust-lang.org)
 

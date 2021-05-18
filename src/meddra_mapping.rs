@@ -28,6 +28,7 @@ pub async fn find_pts(pool: &Pool, precision: i64) -> Result<(), Box<dyn Error>>
         fast_precision, dam_lev_cutoff
     );
 
+    execute("update_general_disorders", &client, &queries).await;
     execute("drop_table", &client, &queries).await;
     execute("create_table", &client, &queries).await;
 
