@@ -92,80 +92,7 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
                 }
             }
         } else if result_groups.len() == design_groups.len() {
-            for rg in &result_groups {
-                let mut found = false;
-                for dg in &design_groups {
-                    if rg
-                        .title
-                        .as_ref()
-                        .unwrap()
-                        .eq_ignore_ascii_case(dg.title.as_ref().unwrap().as_str())
-                        || rg
-                            .title
-                            .as_ref()
-                            .unwrap_or(&String::from("No title"))
-                            .eq_ignore_ascii_case(
-                                dg.intervention
-                                    .as_ref()
-                                    .unwrap_or(&vec![Intervention {
-                                        id: 0,
-                                        name: String::from(""),
-                                    }])
-                                    .get(0)
-                                    .unwrap()
-                                    .name
-                                    .as_str(),
-                            )
-                    {
-                        found = true;
-                        update(
-                            &pool,
-                            &stmt,
-                            &study_id,
-                            &rg,
-                            &dg,
-                            String::from("direct hit"),
-                        )
-                        .await;
-                    }
-                }
-                if !found && rg.title.as_ref().unwrap().chars().count() > 2 {
-                    let mut comparsions: BTreeMap<usize, &Group> = BTreeMap::new();
-                    for dg in &design_groups {
-                        let dgt = &dg.title.as_ref().unwrap();
-                        if dgt.chars().count() > 2 {
-                            let dg_title = &dgt.replace("arm", "").replace("group", "");
-                            let rg_title = &rg
-                                .title
-                                .as_ref()
-                                .unwrap()
-                                .clone()
-                                .replace("arm", "")
-                                .replace("group", "");
-                            let distance = distance::damerau_levenshtein(dg_title, rg_title);
-                            if distance < 7
-                                && (comparsions.is_empty()
-                                    || !comparsions.contains_key(&distance)
-                                    || comparsions.iter().next().unwrap().0 != &distance)
-                            {
-                                comparsions.insert(distance, dg);
-                            }
-                        }
-                    }
-                    if !comparsions.is_empty() {
-                        let dg = comparsions.iter().next().unwrap().1;
-                        update(
-                            &pool,
-                            &stmt,
-                            &study_id,
-                            &rg,
-                            &dg,
-                            String::from("pattern match"),
-                        )
-                        .await;
-                    }
-                }
-            }
+            rg_and_dg_of_equal_len(&pool, &stmt, &study_id, &design_groups, &result_groups).await?;
         } else if result_groups.len() < design_groups.len() {
             for rg in &result_groups {
                 for dg in &design_groups {
@@ -246,7 +173,129 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
             }
         }
     }
+    pb.finish();
+    println!();
     execute("populate_remaining", &client, &queries).await;
+    Ok(())
+}
+
+async fn rg_and_dg_of_equal_len(
+    pool: &Pool,
+    stmt: &str,
+    study_id: &String,
+    design_groups: &Vec<Group>,
+    result_groups: &Vec<Group>,
+) -> Result<(), Box<dyn Error>> {
+    for rg in result_groups {
+        let mut found = false;
+        for dg in design_groups {
+            if rg
+                .title
+                .as_ref()
+                .unwrap()
+                .eq_ignore_ascii_case(dg.title.as_ref().unwrap().as_str())
+                || rg
+                    .title
+                    .as_ref()
+                    .unwrap_or(&String::from("No title"))
+                    .eq_ignore_ascii_case(
+                        dg.intervention
+                            .as_ref()
+                            .unwrap_or(&vec![Intervention {
+                                id: 0,
+                                name: String::from(""),
+                            }])
+                            .get(0)
+                            .unwrap()
+                            .name
+                            .as_str(),
+                    )
+            {
+                found = true;
+                update(
+                    &pool,
+                    &stmt,
+                    &study_id,
+                    &rg,
+                    &dg,
+                    String::from("direct hit"),
+                )
+                .await;
+            }
+        }
+        if !found {
+            let mut matches: i8 = 0;
+            let mut matching_dg: Option<&Group> = None;
+            for dg in design_groups {
+                if rg
+                    .title
+                    .as_ref()
+                    .unwrap()
+                    .to_lowercase()
+                    .contains(&dg.title.as_ref().unwrap().to_lowercase())
+                    || dg
+                        .title
+                        .as_ref()
+                        .unwrap()
+                        .to_lowercase()
+                        .contains(&rg.title.as_ref().unwrap().to_lowercase())
+                {
+                    matches += 1;
+                    matching_dg = Some(dg);
+                }
+            }
+            if matches == 1 {
+                found = true;
+                update(
+                    &pool,
+                    &stmt,
+                    &study_id,
+                    &rg,
+                    matching_dg.unwrap(),
+                    String::from("direct hit"),
+                )
+                .await;
+            }
+        }
+
+        if !found && rg.title.as_ref().unwrap().chars().count() > 2 {
+            let mut comparsions: BTreeMap<usize, &Group> = BTreeMap::new();
+            for dg in design_groups {
+                let dgt = &dg.title.as_ref().unwrap();
+                if dgt.chars().count() > 2 {
+                    let dg_title = &dgt.replace("arm", "").replace("group", "");
+                    let rg_title = &rg
+                        .title
+                        .as_ref()
+                        .unwrap()
+                        .clone()
+                        .replace("arm", "")
+                        .replace("group", "");
+                    let distance = distance::damerau_levenshtein(dg_title, rg_title);
+                    if distance < 7
+                        && (comparsions.is_empty()
+                            || !comparsions.contains_key(&distance)
+                            || comparsions.iter().next().unwrap().0 != &distance)
+                    {
+                        comparsions.insert(distance, dg);
+                    }
+                }
+            }
+            if !comparsions.is_empty() {
+                let dg = comparsions.iter().next().unwrap().1;
+                update(
+                    &pool,
+                    &stmt,
+                    &study_id,
+                    &rg,
+                    &dg,
+                    String::from("pattern match"),
+                )
+                .await;
+            }
+        }
+    }
+
     Ok(())
 }
 

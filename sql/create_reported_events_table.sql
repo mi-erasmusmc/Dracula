@@ -22,10 +22,23 @@ SELECT DISTINCT re.id,
 FROM ctgov.reported_events re
          LEFT JOIN meddra.mdhier m ON lower(m.pt_name) = lower(re.adverse_event_term);
 
+WITH cte AS (SELECT DISTINCT trim(BOTH FROM
+                                  regexp_replace(regexp_replace(lower(pt_name), '[^a-z]', ' ', 'g'), '\s+', ' ',
+                                                 'g')) AS pt_name,
+                             pt_code
+             FROM meddra.mdhier
+             UNION
+             SELECT DISTINCT trim(BOTH FROM
+                                  regexp_replace(regexp_replace(lower(llt_name), '[^a-z]', ' ', 'g'), '\s+', ' ',
+                                                 'g')) AS pt_name,
+                             pt_code
+             FROM meddra.llt)
 UPDATE ctgov.reported_events_2 re
-SET pt_code = m.pt_code
-FROM meddra.llt m
-WHERE lower(re.adverse_event_term) = lower(m.llt_name)
+SET pt_code = cte.pt_code
+FROM cte
+WHERE trim(BOTH FROM
+           regexp_replace(regexp_replace(lower(re.adverse_event_term), '[^a-z]', ' ', 'g'), '\s+', ' ', 'g')) =
+      cte.pt_name
   AND re.pt_code IS NULL;
 
 DROP INDEX IF EXISTS ctgov.index_reported_events_on_event_type_2;

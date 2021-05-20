@@ -362,7 +362,8 @@ WHERE r.ctgov_group_code LIKE 'E%'
 
 
 -- name: find_rxconso_terms_for_tty
-SELECT DISTINCT lower(str) AS str, rxcui
+SELECT DISTINCT trim(BOTH FROM regexp_replace(regexp_replace(lower(str), '[^a-z0-9]', ' ', 'g'), '\s+', ' ', 'g')) AS str,
+                rxcui
 FROM ctgov.rxnconso
 WHERE sab = 'RXNORM'
   AND tty = $1

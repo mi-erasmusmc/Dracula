@@ -28,11 +28,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .merge(config::File::with_name("Settings"))
         .expect("Error reading Settings.toml");
 
-    info!("Initializing DB pool...");
+    info!("Initializing DB pool");
     let pool = db::init_db_pool(&settings);
 
     find_drugs(&pool).await?;
-    connect_arms_to_interventions(&pool_2).await?;
+    connect_arms_to_interventions(&pool).await?;
     read_descriptions(&pool).await?;
 
     let skip_meddra = settings
