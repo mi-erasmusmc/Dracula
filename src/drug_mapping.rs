@@ -126,7 +126,7 @@ pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
         do_matching(rxnorm, &mapping, &mut insert_values, &mut map);
 
         if map.len() == 0 {
-            warn!("Did not find any matches, somthing is probably wrong");
+            warn!("Did not find any matches, something is probably wrong");
             continue;
         }
         info!("Found {} matches, updating db", map.len());

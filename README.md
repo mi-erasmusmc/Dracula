@@ -20,7 +20,7 @@ much welcome.
 - You will need the RxNORM database, in particular both the RXNCONSO table and the RXNREL table. The RxNorm data is
   available
   [here](https://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html) (db is free but registration is required).
-  The app expects the two tables to be located within the aact ctgov schema.
+  The app expects the two tables to be located within a schema called 'rxnorm'.
 
 - If you also to wish to perform additional standardization on the outcome side you require the MedDRA db. Some effort
   is required to obtain the MedDRA db so this step is optional. If you do have the MedDRA db be sure it is in the same

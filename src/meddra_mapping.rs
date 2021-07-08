@@ -85,7 +85,7 @@ async fn make_comparisons(
         if counter % 100 == 0 {
             pb.inc();
         }
-        let mut comparisons: BTreeMap<usize, (&str, i64)> = BTreeMap::new();
+        let mut comparisons: BTreeMap<usize, (&str, i32)> = BTreeMap::new();
         let term: &str = term_row.get(0);
         let term_clean = term
             .replace("other", "")
@@ -95,7 +95,7 @@ async fn make_comparisons(
             .replace("  ", " ");
         for pt_row in &pts {
             let pt = pt_row.get("pt_name");
-            let pt_code: i64 = pt_row.get("pt_code");
+            let pt_code: i32 = pt_row.get("pt_code");
             let fast_distance = distance::sift3(&term_clean, pt);
             if fast_distance < fast_precision {
                 let distance = distance::damerau_levenshtein(&term_clean, pt);

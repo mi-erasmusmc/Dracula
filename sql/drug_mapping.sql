@@ -73,8 +73,8 @@ CREATE TABLE ctgov.drug_mapping_rxcui
 INSERT INTO ctgov.drug_mapping_rxcui
 SELECT DISTINCT dm.id AS drug_mapping_id, dm.original AS original, rx2.rxcui AS rxcui, NULL AS rx_str
 FROM ctgov.drug_mapping dm
-         JOIN ctgov.rxnconso rx1 ON dm.clean = rx1.str
-         JOIN ctgov.rxnconso rx2 ON rx1.rxcui = rx2.rxcui
+         JOIN rxnorm.rxnconso rx1 ON dm.clean = rx1.str
+         JOIN rxnorm.rxnconso rx2 ON rx1.rxcui = rx2.rxcui
 WHERE rx2.tty NOT IN ('PSN', 'SY', 'TMSY', 'DF')
   AND rx2.sab = 'RXNORM'
   AND dm.clean != 'control';
@@ -159,7 +159,7 @@ WHERE clean IS NOT NULL;
 
 -- name: find_ingredients
 WITH cte1 AS (SELECT DISTINCT lower(str) AS string, rxcui
-              FROM ctgov.rxnconso
+              FROM rxnorm.rxnconso
               WHERE sab = 'RXNORM'
                 AND tty = $1)
 SELECT id AS drug_mapping_id, cte1.rxcui AS rxcui, cte1.string
@@ -171,8 +171,8 @@ WITH cte AS (SELECT DISTINCT dm.id, dm.original, rx2.rxcui, rx2.str
              FROM ctgov.drug_mapping dm
                       JOIN ctgov.cem_staging_vocabulary_concept_synonym c ON dm.clean = lower(c.concept_synonym_name)
                       JOIN ctgov.cem_staging_vocabulary_source_to_concept_map m ON c.concept_id = m.source_concept_id
-                      JOIN ctgov.rxnconso rx ON m.source_code = rx.code
-                      JOIN ctgov.rxnconso rx2 ON rx.rxcui = rx2.rxcui
+                      JOIN rxnorm.rxnconso rx ON m.source_code = rx.code
+                      JOIN rxnorm.rxnconso rx2 ON rx.rxcui = rx2.rxcui
              WHERE dm.clean IS NOT NULL
                AND rx2.sab = 'RXNORM'
                AND rx2.tty IN ('IN', 'MIN'))
@@ -292,19 +292,25 @@ INSERT INTO ctgov.result_groups_rxnorm (id, rxcui)
 SELECT DISTINCT m.rg_id AS id, io.rxcui AS rxcui
 FROM ctgov.matches m
          JOIN ctgov.result_group_intervention ri ON m.rg_id = ri.rg_id
-         JOIN ctgov.intervention_other_names_rxnorm io ON io.intervention_id = ri.intervention_id;
+         JOIN ctgov.intervention_other_names_rxnorm io ON io.intervention_id = ri.intervention_id
+         LEFT JOIN ctgov.interventions_rxnorm ir ON io.intervention_id = ir.id
+WHERE ir.id IS NULL;
 
 -- name: i_over_dg_rg_rx_table
+INSERT INTO ctgov.result_groups_rxnorm (id, rxcui)
 SELECT DISTINCT m.rg_id AS id, i.rxcui AS rxcui
 FROM ctgov.matches m
          JOIN ctgov.design_group_interventions dgi ON m.dg_id = dgi.design_group_id
          JOIN ctgov.interventions_rxnorm i ON dgi.intervention_id = i.id;
 
 -- name: io_over_dg_rg_rx_table
+INSERT INTO ctgov.result_groups_rxnorm (id, rxcui)
 SELECT DISTINCT m.rg_id AS id, io.rxcui AS rxcui
 FROM ctgov.matches m
          JOIN ctgov.design_group_interventions dgi ON m.dg_id = dgi.design_group_id
-         JOIN ctgov.intervention_other_names_rxnorm io ON io.intervention_id = dgi.intervention_id;
+         JOIN ctgov.intervention_other_names_rxnorm io ON io.intervention_id = dgi.intervention_id
+         LEFT JOIN ctgov.interventions_rxnorm ir ON io.intervention_id = ir.id
+WHERE ir.id IS NULL;
 
 -- name: drop_final_rg_in_table
 DROP TABLE IF EXISTS ctgov.result_group_ingredient;
@@ -321,13 +327,13 @@ WITH cte AS (SELECT DISTINCT r.nct_id,
                       JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
                       JOIN ctgov.designs d ON r.nct_id = d.nct_id
                       JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
-                      JOIN ctgov.rxnconso rc ON rc.rxcui = rx.rxcui
+                      JOIN rxnorm.rxnconso rc ON rc.rxcui = rx.rxcui
              WHERE r.ctgov_group_code LIKE 'E%'
                AND rc.tty NOT IN ('IN', 'PSN', 'SY', 'TMSY', 'DF')
                AND rc.sab = 'RXNORM'
                AND re.subjects_affected > 0
                AND r.nct_id IS NOT NULL
-               AND rx.rxcui NOT IN (1001007, 890964, 411, 11295))
+               AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129))
 SELECT DISTINCT cte.nct_id,
                 cte.id,
                 cte.rxcui AS rxcui,
@@ -335,8 +341,8 @@ SELECT DISTINCT cte.nct_id,
                 cte.tty,
                 r.rxcui   AS in_rxcui,
                 r.str     AS in_str
-FROM ctgov.rxnrel rel
-         JOIN ctgov.rxnconso r ON rel.rxcui2 = cast(r.rxcui AS TEXT)
+FROM rxnorm.rxnrel rel
+         JOIN rxnorm.rxnconso r ON rel.rxcui2 = cast(r.rxcui AS TEXT)
          JOIN cte ON cast(cte.rxcui AS TEXT) = rel.rxcui1
 WHERE r.tty = 'IN'
   AND r.sab = 'RXNORM'
@@ -352,22 +358,23 @@ FROM ctgov.result_groups r
          JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
          JOIN ctgov.designs d ON r.nct_id = d.nct_id
          JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
-         JOIN ctgov.rxnconso rc ON rc.rxcui = rx.rxcui
+         JOIN rxnorm.rxnconso rc ON rc.rxcui = rx.rxcui
 WHERE r.ctgov_group_code LIKE 'E%'
   AND rc.tty = 'IN'
   AND rc.sab = 'RXNORM'
   AND re.subjects_affected > 0
   AND r.nct_id IS NOT NULL
-  AND rx.rxcui NOT IN (1001007, 890964, 411, 11295);
+  AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129);
 
 
 -- name: find_rxconso_terms_for_tty
-SELECT DISTINCT trim(BOTH FROM regexp_replace(regexp_replace(lower(str), '[^a-z0-9]', ' ', 'g'), '\s+', ' ', 'g')) AS str,
+SELECT DISTINCT trim(BOTH FROM
+                     regexp_replace(regexp_replace(lower(str), '[^a-z0-9]', ' ', 'g'), '\s+', ' ', 'g')) AS str,
                 rxcui
-FROM ctgov.rxnconso
+FROM rxnorm.rxnconso
 WHERE sab = 'RXNORM'
   AND tty = $1
-  AND rxcui NOT IN (1001007, 890964, 411, 11295);
+  AND rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129);
 
 -- name: find_terms_to_map
 SELECT DISTINCT id, clean
