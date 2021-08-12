@@ -198,7 +198,7 @@ async fn match_words(pool: &Pool, tty: &&str, queries: &HashMap<String, String>)
 
     do_matching(rxnorm, &mapping, &mut insert_values, &mut map);
     if map.len() == 0 {
-        warn!("Did not find any matches, somthing is probably wrong");
+        warn!("Did not find any matches, something is probably wrong");
         return;
     }
     info!("Found {} matches, updating db", map.len());

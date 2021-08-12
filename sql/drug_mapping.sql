@@ -342,8 +342,8 @@ SELECT DISTINCT cte.nct_id,
                 r.rxcui   AS in_rxcui,
                 r.str     AS in_str
 FROM rxnorm.rxnrel rel
-         JOIN rxnorm.rxnconso r ON rel.rxcui2 = cast(r.rxcui AS TEXT)
-         JOIN cte ON cast(cte.rxcui AS TEXT) = rel.rxcui1
+         JOIN rxnorm.rxnconso r ON rel.rxcui2 = r.rxcui
+         JOIN cte ON cte.rxcui = rel.rxcui1
 WHERE r.tty = 'IN'
   AND r.sab = 'RXNORM'
 UNION
