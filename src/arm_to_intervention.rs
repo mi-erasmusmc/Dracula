@@ -10,6 +10,13 @@ use rawsql::Loader;
 use crate::db::execute;
 
 pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Error>> {
+    let cumulative_groups_names = vec![
+        String::from("total"),
+        String::from("all@patients"),
+        String::from("overall participants"),
+        String::from("all participants"),
+    ];
+
     let client = pool.get().await?;
     let queries = Loader::get_queries_from("./sql/arms_to_interventions.sql")
         .unwrap()
@@ -46,7 +53,16 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
 
         let q = queries.get("find_result_groups").unwrap();
         let result = client.query(q.as_str(), &[&study_id]).await?;
-        let result_groups: Vec<Group> = result.iter().map(|r| Group::from(r)).collect();
+        let result_groups: Vec<Group>;
+        if result.len() > 1 {
+            result_groups = result
+                .iter()
+                .map(|r| Group::from(r))
+                .filter(|rg| !cumulative_groups_names.contains(&rg.title.as_ref().unwrap().to_lowercase()))
+                .collect();
+        } else {
+            result_groups = result.iter().map(|r| Group::from(r)).collect();
+        }
 
         if study_model.eq_ignore_ascii_case("single group assignment") {
             attach_all_interventions(&pool, &queries, &study_id, &result_groups).await

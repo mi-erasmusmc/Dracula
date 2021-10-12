@@ -80,4 +80,5 @@ FROM ctgov.result_groups rg
          JOIN ctgov.reported_events re ON rg.nct_id = re.nct_id
 WHERE m.rg_id IS NULL
   AND rg.ctgov_group_code LIKE 'E%'
-  AND re.subjects_affected > 0;
+  AND re.subjects_affected > 0
+  AND lower(rg.title) NOT IN ('total', 'all@patients', 'overall participants', 'all participants');
