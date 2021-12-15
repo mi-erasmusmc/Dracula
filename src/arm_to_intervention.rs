@@ -58,7 +58,14 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
             result_groups = result
                 .iter()
                 .map(|r| Group::from(r))
-                .filter(|rg| !cumulative_groups_names.contains(&rg.title.as_ref().unwrap().to_lowercase()))
+                .filter(|rg| {
+                    !cumulative_groups_names.contains(
+                        &rg.title
+                            .as_ref()
+                            .unwrap_or(&"no group title".to_string())
+                            .to_lowercase(),
+                    )
+                })
                 .collect();
         } else {
             result_groups = result.iter().map(|r| Group::from(r)).collect();
