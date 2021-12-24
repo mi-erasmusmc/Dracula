@@ -31,7 +31,7 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
     let result = client.query(q.as_str(), &[]).await?;
     let total_trials = result.len();
     info!("Processing {} Clinical Trials", total_trials);
-    let mut pb = ProgressBar::new((total_trials / 100) as u64);
+    let mut pb = ProgressBar::new((total_trials / 1000) as u64);
     pb.set_width(Some(80));
 
     let studies: Vec<(String, Option<String>)> = result
@@ -45,7 +45,7 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
 
     for study_tup in studies {
         counter += 1;
-        if counter % 100 == 0 {
+        if counter % 1000 == 0 {
             pb.inc();
         }
         let study_id = study_tup.0;
@@ -86,7 +86,12 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
         } else if design_groups.len() == 1 {
             let dg = design_groups.get(0).unwrap();
             for rg in result_groups {
-                if !rg.title.as_ref().unwrap().contains("placebo") {
+                if !rg
+                    .title
+                    .as_ref()
+                    .unwrap_or(&String::from("no title"))
+                    .contains("placebo")
+                {
                     update(
                         &pool,
                         &stmt,
@@ -122,8 +127,13 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
                     if rg
                         .title
                         .as_ref()
-                        .unwrap()
-                        .eq_ignore_ascii_case(dg.title.as_ref().unwrap().as_str())
+                        .unwrap_or(&String::from("no title"))
+                        .eq_ignore_ascii_case(
+                            dg.title
+                                .as_ref()
+                                .unwrap_or(&String::from("no title"))
+                                .as_str(),
+                        )
                     {
                         update(
                             &pool,
@@ -153,7 +163,11 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
                 if found != 1 {
                     let mut comparsions: BTreeMap<usize, &Group> = BTreeMap::new();
                     for dg in &design_groups {
-                        let dgt = &dg.title.as_ref().unwrap();
+                        let dgt = &dg
+                            .title
+                            .as_ref()
+                            .unwrap_or(&String::from("no title"))
+                            .clone();
                         let dg_title = &dgt
                             .replace("arm", "")
                             .replace("group", "")
@@ -161,7 +175,7 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
                         let rg_title = &rg
                             .title
                             .as_ref()
-                            .unwrap()
+                            .unwrap_or(&String::from("no title"))
                             .clone()
                             .replace("arm", "")
                             .replace("group", "")
@@ -215,8 +229,13 @@ async fn rg_and_dg_of_equal_len(
             if rg
                 .title
                 .as_ref()
-                .unwrap()
-                .eq_ignore_ascii_case(dg.title.as_ref().unwrap().as_str())
+                .unwrap_or(&String::from("no title"))
+                .eq_ignore_ascii_case(
+                    dg.title
+                        .as_ref()
+                        .unwrap_or(&String::from("no title"))
+                        .as_str(),
+                )
                 || rg
                     .title
                     .as_ref()
@@ -253,15 +272,25 @@ async fn rg_and_dg_of_equal_len(
                 if rg
                     .title
                     .as_ref()
-                    .unwrap()
+                    .unwrap_or(&String::from("no title"))
                     .to_lowercase()
-                    .contains(&dg.title.as_ref().unwrap().to_lowercase())
+                    .contains(
+                        &dg.title
+                            .as_ref()
+                            .unwrap_or(&String::from("no title"))
+                            .to_lowercase(),
+                    )
                     || dg
                         .title
                         .as_ref()
-                        .unwrap()
+                        .unwrap_or(&String::from("no title"))
                         .to_lowercase()
-                        .contains(&rg.title.as_ref().unwrap().to_lowercase())
+                        .contains(
+                            &rg.title
+                                .as_ref()
+                                .unwrap_or(&String::from("no title"))
+                                .to_lowercase(),
+                        )
                 {
                     matches += 1;
                     matching_dg = Some(dg);
@@ -281,16 +310,28 @@ async fn rg_and_dg_of_equal_len(
             }
         }
 
-        if !found && rg.title.as_ref().unwrap().chars().count() > 2 {
+        if !found
+            && rg
+                .title
+                .as_ref()
+                .unwrap_or(&String::from("no title"))
+                .chars()
+                .count()
+                > 2
+        {
             let mut comparsions: BTreeMap<usize, &Group> = BTreeMap::new();
             for dg in design_groups {
-                let dgt = &dg.title.as_ref().unwrap();
+                let dgt = &dg
+                    .title
+                    .as_ref()
+                    .unwrap_or(&String::from("no title"))
+                    .clone();
                 if dgt.chars().count() > 2 {
                     let dg_title = &dgt.replace("arm", "").replace("group", "");
                     let rg_title = &rg
                         .title
                         .as_ref()
-                        .unwrap()
+                        .unwrap_or(&String::from("no title"))
                         .clone()
                         .replace("arm", "")
                         .replace("group", "");
