@@ -13,9 +13,7 @@ use crate::db::{execute, query};
 pub async fn find_pts(pool: &Pool, precision: i64) -> Result<(), Box<dyn Error>> {
     info!("Starting MedDRA standardization");
     let client = pool.get().await?;
-    let queries = Loader::get_queries_from("./sql/meddra_mapping.sql")
-        .unwrap()
-        .queries;
+    let queries = Loader::read_queries_from("./sql/meddra_mapping.sql").unwrap();
 
     info!("Finding exact matches ... takes about 6 minutes to write 6 million records");
     let q = fs::read_to_string("./sql/create_reported_events_table.sql")?;

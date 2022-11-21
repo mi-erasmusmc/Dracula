@@ -2,10 +2,10 @@ Dracula - A Clinical Trials Drug - Adverse Event Mapper
 =======================
 
 **Dracula is a tool to be used in combination with the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/). It
-does two things: First, it generates an additional table called 'result_group_ingredient' that links the reported adverse events
-from the 'result_groups' table to an RxNorm ID of the drugs provided to the specific group for which this adverse event
-occurred. Second it adds an additional pt_code column to the reported_events table containing the MedDRA preferred term
-code for the specific adverse event.**
+does two things: First, it generates an additional table called 'result_group_ingredient' that links the reported
+adverse events from the 'result_groups' table to an RxNorm ID of the drugs provided to the specific group for which this
+adverse event occurred. Second it adds a pt_code column to the reported_events table containing the MedDRA preferred
+term code for the specific adverse event.**
 
 Note:
 The master branch of this project should work, but the project as whole is still under construction. Although a decent
@@ -14,8 +14,8 @@ much welcome.
 
 ### REQUIREMENTS
 
-- Dracula builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/) system, you will need to download and
-  start that database before doing this :-)
+- Dracula builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/) system, you will need to download
+  and start that database before doing this :-)
 
 - You will need the RxNORM database, in particular both the RXNCONSO table and the RXNREL table. The RxNorm data is
   available
@@ -26,9 +26,9 @@ much welcome.
   is required to obtain the MedDRA db so this step is optional. If you do have the MedDRA db be sure it is in the same
   db in a schema named 'meddra', we will be using the 'medhier' and 'llt' tables.
 
-- To build and run the app you will need [Rust](www.rust-lang.org)
+- To build and run the app you will need [Rust](https://www.rust-lang.org)
 
-- This app has been developed and tested using MacOS Big Sur, PostgreSQL version 13.1, and Rust 1.49.0.
+- This app has been developed and tested using macOS Big Sur, Postgres version 13.1, and Rust 1.49.0.
 
 ### HOW TO RUN
 
@@ -51,4 +51,3 @@ There are two extra settings that you can configure in the `Settings.toml` file.
 - This and that :-)
 
 
-  

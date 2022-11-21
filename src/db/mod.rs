@@ -4,30 +4,29 @@ use std::time::Instant;
 use config::Config;
 use deadpool::managed::Object;
 use deadpool_postgres::tokio_postgres::types::ToSql;
-use deadpool_postgres::tokio_postgres::Error;
 use deadpool_postgres::tokio_postgres::Row;
-use deadpool_postgres::{ClientWrapper, Manager, ManagerConfig, Pool, RecyclingMethod};
+use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
 use log::debug;
 use tokio_postgres::NoTls;
 
 pub fn init_db_pool(config: &Config) -> Pool {
     let mut pg_config = tokio_postgres::Config::new();
     pg_config.port(config.get_int("pg_port").unwrap() as u16);
-    pg_config.host(&*config.get_str("pg_host").unwrap());
-    pg_config.user(&*config.get_str("pg_user").unwrap());
-    pg_config.dbname(&*config.get_str("pg_dbname").unwrap());
-    pg_config.password(&*config.get_str("pg_password").unwrap());
+    pg_config.host(&*config.get_string("pg_host").unwrap());
+    pg_config.user(&*config.get_string("pg_user").unwrap());
+    pg_config.dbname(&*config.get_string("pg_dbname").unwrap());
+    pg_config.password(&*config.get_string("pg_password").unwrap());
     let mgr_config = ManagerConfig {
         recycling_method: RecyclingMethod::Fast,
     };
-    let mgr: Manager<NoTls> = Manager::from_config(pg_config, NoTls, mgr_config);
-    let pool: Pool = Pool::new(mgr, 6);
+    let mgr: Manager = Manager::from_config(pg_config, NoTls, mgr_config);
+    let pool: Pool = Pool::builder(mgr).max_size(6).build().unwrap();
     pool
 }
 
 pub async fn execute(
     query_name: &str,
-    client: &Object<ClientWrapper, Error>,
+    client: &Object<Manager>,
     queries: &HashMap<String, String>,
 ) {
     let start = Instant::now();
@@ -49,7 +48,7 @@ pub async fn execute(
 
 pub async fn query(
     query_name: &str,
-    client: &Object<ClientWrapper, Error>,
+    client: &Object<Manager>,
     queries: &HashMap<String, String>,
     params: &[&(dyn ToSql + Sync)],
 ) -> Vec<Row> {

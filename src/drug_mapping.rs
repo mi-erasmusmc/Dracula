@@ -11,9 +11,7 @@ use rawsql::Loader;
 use crate::db::execute;
 
 pub async fn find_drugs(pool: &Pool) -> Result<(), Box<dyn Error>> {
-    let queries = Loader::get_queries_from("./sql/drug_mapping.sql")
-        .unwrap()
-        .queries;
+    let queries = Loader::read_queries_from("./sql/drug_mapping.sql").unwrap();
 
     let client = pool.get().await?;
 
@@ -92,9 +90,7 @@ async fn load_art57(pool: &Pool) {
 }
 
 pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
-    let queries = Loader::get_queries_from("./sql/drug_mapping.sql")
-        .unwrap()
-        .queries;
+    let queries = Loader::read_queries_from("./sql/drug_mapping.sql").unwrap();
 
     let client = pool.get().await?;
     execute("drop_rg_desc_map", &client, &queries).await;
@@ -160,6 +156,7 @@ pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
     info!("Creating the final result group to rxcui table");
     execute("drop_final_rg_in_table", &client, &queries).await;
     execute("create_final_rg_in_table", &client, &queries).await;
+    execute("get_dose_1", &client, &queries).await;
 
     Ok(())
 }

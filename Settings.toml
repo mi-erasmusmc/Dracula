@@ -6,5 +6,5 @@ pg_password = "postgres"
 pg_dbname = "aact"
 
 # MedDRA mapping setings
-skip_meddra = false         # MedDRA requires acces to their db, if you don't have it you can still, skip the final step and still get decent outcome info.
-meddra_precision = 2        # Wildness in mapping unkown meddra terms 5 least precise 1 very precies
+skip_meddra = true         # MedDRA requires acces to their db, if you don't have it you can still, skip the final step and still get decent outcome info.
+meddra_precision = 3        # Wildness in mapping unkown meddra terms 5 least precise 1 very precies

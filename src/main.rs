@@ -3,6 +3,7 @@ use std::io::Write;
 use std::time::Instant;
 
 use chrono::Local;
+use config::{Config, File};
 use env_logger::Builder;
 use log::{info, LevelFilter};
 
@@ -23,9 +24,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let start = Instant::now();
 
     info!("Reading Settings.toml");
-    let mut settings = config::Config::default();
-    settings
-        .merge(config::File::with_name("Settings"))
+    let settings = Config::builder()
+        .add_source(File::with_name("Settings"))
+        .build()
         .expect("Error reading Settings.toml");
 
     info!("Initializing DB pool");

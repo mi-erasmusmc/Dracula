@@ -18,9 +18,7 @@ pub async fn connect_arms_to_interventions(pool: &Pool) -> Result<(), Box<dyn Er
     ];
 
     let client = pool.get().await?;
-    let queries = Loader::get_queries_from("./sql/arms_to_interventions.sql")
-        .unwrap()
-        .queries;
+    let queries = Loader::read_queries_from("./sql/arms_to_interventions.sql").unwrap();
 
     execute("drop_table", &client, &queries).await;
     execute("create_table", &client, &queries).await;

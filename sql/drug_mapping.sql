@@ -73,9 +73,9 @@ CREATE TABLE ctgov.drug_mapping_rxcui
 INSERT INTO ctgov.drug_mapping_rxcui
 SELECT DISTINCT dm.id AS drug_mapping_id, dm.original AS original, rx2.rxcui AS rxcui, NULL AS rx_str
 FROM ctgov.drug_mapping dm
-         JOIN rxnorm.rxnconso rx1 ON dm.clean = rx1.str
+         JOIN rxnorm.rxnconso rx1 ON dm.clean = lower(rx1.str)
          JOIN rxnorm.rxnconso rx2 ON rx1.rxcui = rx2.rxcui
-WHERE rx2.tty NOT IN ('PSN', 'SY', 'TMSY', 'DF')
+WHERE rx2.tty NOT IN ('PSN', 'SY', 'TMSY', 'DF', 'ET', 'DFG')
   AND rx2.sab = 'RXNORM'
   AND dm.clean != 'control';
 
@@ -329,18 +329,19 @@ WITH cte AS (SELECT DISTINCT r.nct_id,
                       JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
                       JOIN rxnorm.rxnconso rc ON rc.rxcui = rx.rxcui
              WHERE r.ctgov_group_code LIKE 'E%'
-               AND rc.tty NOT IN ('IN', 'PSN', 'SY', 'TMSY', 'DF')
+               AND rc.tty NOT IN ('IN', 'PSN', 'SY', 'TMSY', 'DF', 'ET', 'DFG')
                AND rc.sab = 'RXNORM'
                AND re.subjects_affected > 0
                AND r.nct_id IS NOT NULL
                AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129))
 SELECT DISTINCT cte.nct_id,
                 cte.id,
-                cte.rxcui AS rxcui,
+                cte.rxcui             AS rxcui,
                 cte.str,
                 cte.tty,
-                r.rxcui   AS in_rxcui,
-                r.str     AS in_str
+                r.rxcui               AS in_rxcui,
+                r.str                 AS in_str,
+                cast(NULL AS VARCHAR) AS dose
 FROM rxnorm.rxnrel rel
          JOIN rxnorm.rxnconso r ON rel.rxcui2 = r.rxcui
          JOIN cte ON cte.rxcui = rel.rxcui1
@@ -349,11 +350,12 @@ WHERE r.tty = 'IN'
 UNION
 SELECT DISTINCT r.nct_id,
                 r.id,
-                rx.rxcui AS rxcui,
+                rx.rxcui              AS rxcui,
                 rc.str,
                 rc.tty,
-                rx.rxcui AS in_rxcui,
-                rc.str   AS in_str
+                rx.rxcui              AS in_rxcui,
+                rc.str                AS in_str,
+                cast(NULL AS VARCHAR) AS dose
 FROM ctgov.result_groups r
          JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
          JOIN ctgov.designs d ON r.nct_id = d.nct_id
@@ -364,7 +366,50 @@ WHERE r.ctgov_group_code LIKE 'E%'
   AND rc.sab = 'RXNORM'
   AND re.subjects_affected > 0
   AND r.nct_id IS NOT NULL
-  AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129);
+  AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129)
+UNION
+(WITH cte AS (SELECT DISTINCT r.nct_id,
+                             r.id,
+                             rx.rxcui AS rxcui,
+                             rc.str,
+                             rc.tty,
+                             rx.rxcui AS rxcui_in
+             FROM ctgov.result_groups r
+                      JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
+                      JOIN ctgov.designs d ON r.nct_id = d.nct_id
+                      JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
+                      JOIN rxnorm.rxnconso rc ON rc.rxcui = rx.rxcui
+             WHERE r.ctgov_group_code LIKE 'E%'
+               AND rc.tty IN ('SCD', 'SBDG', 'SBDF', 'SBDC', 'SBD')
+               AND rc.sab = 'RXNORM'
+               AND re.subjects_affected > 0
+               AND r.nct_id IS NOT NULL
+               AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129))
+SELECT DISTINCT cte.nct_id,
+                cte.id,
+                cte.rxcui             AS rxcui,
+                cte.str,
+                cte.tty,
+                r.rxcui               AS in_rxcui,
+                r.str                 AS in_str,
+                cast(NULL AS VARCHAR) AS dose
+FROM rxnorm.rxnrel rel1
+         JOIN rxnorm.rxnrel rel2 ON rel1.rxcui2 = rel2.rxcui1
+         JOIN rxnorm.rxnconso r ON rel2.rxcui2 = r.rxcui
+         JOIN cte ON cte.rxcui = rel1.rxcui1
+WHERE r.tty = 'IN'
+  AND r.sab = 'RXNORM');
+
+-- name: get_dose_1
+WITH cte AS (SELECT DISTINCT rgi.rxcui, substring(rx.str FROM '\s([0-9].*)$') AS dose
+             FROM ctgov.result_group_ingredient rgi
+                      JOIN rxnorm.rxnconso rx ON rgi.rxcui = rx.rxcui
+             WHERE rx.tty = 'SCDC'
+               AND rx.sab = 'RXNORM')
+UPDATE ctgov.result_group_ingredient rgi
+SET dose = cte.dose
+FROM cte
+WHERE cte.rxcui = rgi.rxcui;
 
 
 -- name: find_rxconso_terms_for_tty
