@@ -28,7 +28,7 @@ much welcome.
 
 - To build and run the app you will need [Rust](https://www.rust-lang.org)
 
-- This app has been developed and tested using macOS Big Sur, Postgres version 13.1, and Rust 1.49.0.
+- This app has been developed and tested using macOS, Postgres versions 13 - 14, and Rust versions 1.49 - 1.69
 
 ### HOW TO RUN
 
