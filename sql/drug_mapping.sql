@@ -52,8 +52,7 @@ FROM (WITH cte AS (SELECT r.nct_id
       FROM ctgov.result_groups rg
                JOIN cte
                     ON cte.nct_id = rg.nct_id
-      GROUP BY lower(title)
-     ) AS big;
+      GROUP BY lower(title)) AS big;
 
 -- name: mapping_clean_index
 CREATE INDEX mapping_clean_index
@@ -68,6 +67,30 @@ CREATE TABLE ctgov.drug_mapping_rxcui
     rxcui           INT,
     rx_str          TEXT
 );
+
+-- name: direct_match_chembl
+INSERT INTO ctgov.drug_mapping_rxcui
+SELECT DISTINCT dm.id AS drug_mapping_id, dm.original AS original, chem.molregno AS rxcui, NULL AS rx_str
+FROM ctgov.drug_mapping dm
+         JOIN chembl.molecule_synonyms chem ON dm.clean = lower(chem.synonyms)
+WHERE dm.clean != 'control'
+  AND length(chem.synonyms) > 4
+;
+
+-- name: all_chembl
+SELECT DISTINCT chem.molregno, lower(chem.synonyms) AS synonyms, length(chem.synonyms)
+FROM chembl.molecule_synonyms chem
+WHERE length(synonyms) > 4
+ORDER BY length(chem.synonyms) DESC;
+
+-- name all_chembl_clean
+SELECT DISTINCT chem.molregno,
+                trim(BOTH FROM regexp_replace(regexp_replace(lower(chem.synonyms), '[^a-z0-9]', ' ', 'g'), '\s+', ' ',
+                                              'g')) AS synonyms,
+                length(chem.synonyms)
+FROM chembl.molecule_synonyms chem
+WHERE length(synonyms) > 4
+ORDER BY length(chem.synonyms) DESC;
 
 -- name: direct_match_rxnconso
 INSERT INTO ctgov.drug_mapping_rxcui
@@ -192,37 +215,38 @@ DROP TABLE IF EXISTS ctgov.design_groups_rxnorm;
 
 
 -- name: join_table_1
-CREATE TABLE ctgov.interventions_rxnorm AS (
-    SELECT DISTINCT inv.nct_id, inv.id, inv.name, rx.rx_str, rx.rxcui
-    FROM ctgov.drug_mapping_rxcui rx
-             JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
-             JOIN ctgov.interventions inv
-                  ON lower(inv.name) = m.original
-    WHERE inv.intervention_type NOT IN ('Device', 'Behavioral', 'Diagnostic Test'));
+CREATE TABLE ctgov.interventions_rxnorm AS (SELECT DISTINCT inv.nct_id, inv.id, inv.name, rx.rx_str, rx.rxcui
+                                            FROM ctgov.drug_mapping_rxcui rx
+                                                     JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
+                                                     JOIN ctgov.interventions inv
+                                                          ON lower(inv.name) = m.original
+                                            WHERE inv.intervention_type NOT IN
+                                                  ('Device', 'Behavioral', 'Diagnostic Test'));
 
 -- name: join_table_2
-CREATE TABLE ctgov.intervention_other_names_rxnorm AS (
-    SELECT DISTINCT inv.nct_id, inv.intervention_id, inv.name, rx.rx_str, rx.rxcui
-    FROM ctgov.drug_mapping_rxcui rx
-             JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
-             JOIN ctgov.intervention_other_names inv
-                  ON lower(inv.name) = m.original);
+CREATE TABLE ctgov.intervention_other_names_rxnorm AS (SELECT DISTINCT inv.nct_id,
+                                                                       inv.intervention_id,
+                                                                       inv.name,
+                                                                       rx.rx_str,
+                                                                       rx.rxcui
+                                                       FROM ctgov.drug_mapping_rxcui rx
+                                                                JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
+                                                                JOIN ctgov.intervention_other_names inv
+                                                                     ON lower(inv.name) = m.original);
 
 -- name: join_table_3
-CREATE TABLE ctgov.result_groups_rxnorm AS (
-    SELECT DISTINCT inv.nct_id, inv.id, inv.title, rx.rx_str, rx.rxcui
-    FROM ctgov.drug_mapping_rxcui rx
-             JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
-             JOIN ctgov.result_groups inv
-                  ON lower(inv.title) = m.original);
+CREATE TABLE ctgov.result_groups_rxnorm AS (SELECT DISTINCT inv.nct_id, inv.id, inv.title, rx.rx_str, rx.rxcui
+                                            FROM ctgov.drug_mapping_rxcui rx
+                                                     JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
+                                                     JOIN ctgov.result_groups inv
+                                                          ON lower(inv.title) = m.original);
 
 -- name: join_table_4
-CREATE TABLE ctgov.design_groups_rxnorm AS (
-    SELECT DISTINCT inv.nct_id, inv.id, m.original, rx.rx_str, rx.rxcui
-    FROM ctgov.drug_mapping_rxcui rx
-             JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
-             JOIN ctgov.design_groups inv
-                  ON lower(inv.title) = m.original);
+CREATE TABLE ctgov.design_groups_rxnorm AS (SELECT DISTINCT inv.nct_id, inv.id, m.original, rx.rx_str, rx.rxcui
+                                            FROM ctgov.drug_mapping_rxcui rx
+                                                     JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
+                                                     JOIN ctgov.design_groups inv
+                                                          ON lower(inv.title) = m.original);
 
 
 -- name: drop_rg_desc_map
@@ -230,21 +254,20 @@ DROP TABLE IF EXISTS ctgov.rg_desc_mapping;
 
 -- name: rg_desc_map
 CREATE TABLE ctgov.rg_desc_mapping AS
-    (
-        SELECT row_number() OVER ()                   AS id,
-               lower(m.rg_desc)                       AS description,
-               string_agg(cast(m.rg_id AS TEXT), ',') AS ids
-        FROM ctgov.matches m
-                 LEFT JOIN ctgov.design_groups_rxnorm dg ON dg.id = m.dg_id
-                 LEFT JOIN ctgov.result_groups_rxnorm rg ON rg.id = m.rg_id
-                 LEFT JOIN ctgov.result_group_intervention ri ON m.rg_id = ri.rg_id
-                 LEFT JOIN ctgov.interventions_rxnorm i ON ri.intervention_id = i.id
-                 LEFT JOIN ctgov.intervention_other_names_rxnorm io ON io.intervention_id = ri.intervention_id
-        WHERE dg.rxcui IS NULL
-          AND rg.rxcui IS NULL
-          AND i.rxcui IS NULL
-          AND io.rxcui IS NULL
-        GROUP BY lower(m.rg_desc));
+    (SELECT row_number() OVER ()                   AS id,
+            lower(m.rg_desc)                       AS description,
+            string_agg(cast(m.rg_id AS TEXT), ',') AS ids
+     FROM ctgov.matches m
+              LEFT JOIN ctgov.design_groups_rxnorm dg ON dg.id = m.dg_id
+              LEFT JOIN ctgov.result_groups_rxnorm rg ON rg.id = m.rg_id
+              LEFT JOIN ctgov.result_group_intervention ri ON m.rg_id = ri.rg_id
+              LEFT JOIN ctgov.interventions_rxnorm i ON ri.intervention_id = i.id
+              LEFT JOIN ctgov.intervention_other_names_rxnorm io ON io.intervention_id = ri.intervention_id
+     WHERE dg.rxcui IS NULL
+       AND rg.rxcui IS NULL
+       AND i.rxcui IS NULL
+       AND io.rxcui IS NULL
+     GROUP BY lower(m.rg_desc));
 
 
 -- name: remove_non_alpha_numeric_rg
@@ -369,36 +392,36 @@ WHERE r.ctgov_group_code LIKE 'E%'
   AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129)
 UNION
 (WITH cte AS (SELECT DISTINCT r.nct_id,
-                             r.id,
-                             rx.rxcui AS rxcui,
-                             rc.str,
-                             rc.tty,
-                             rx.rxcui AS rxcui_in
-             FROM ctgov.result_groups r
-                      JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
-                      JOIN ctgov.designs d ON r.nct_id = d.nct_id
-                      JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
-                      JOIN rxnorm.rxnconso rc ON rc.rxcui = rx.rxcui
-             WHERE r.ctgov_group_code LIKE 'E%'
-               AND rc.tty IN ('SCD', 'SBDG', 'SBDF', 'SBDC', 'SBD')
-               AND rc.sab = 'RXNORM'
-               AND re.subjects_affected > 0
-               AND r.nct_id IS NOT NULL
-               AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129))
-SELECT DISTINCT cte.nct_id,
-                cte.id,
-                cte.rxcui             AS rxcui,
-                cte.str,
-                cte.tty,
-                r.rxcui               AS in_rxcui,
-                r.str                 AS in_str,
-                cast(NULL AS VARCHAR) AS dose
-FROM rxnorm.rxnrel rel1
-         JOIN rxnorm.rxnrel rel2 ON rel1.rxcui2 = rel2.rxcui1
-         JOIN rxnorm.rxnconso r ON rel2.rxcui2 = r.rxcui
-         JOIN cte ON cte.rxcui = rel1.rxcui1
-WHERE r.tty = 'IN'
-  AND r.sab = 'RXNORM');
+                              r.id,
+                              rx.rxcui AS rxcui,
+                              rc.str,
+                              rc.tty,
+                              rx.rxcui AS rxcui_in
+              FROM ctgov.result_groups r
+                       JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
+                       JOIN ctgov.designs d ON r.nct_id = d.nct_id
+                       JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
+                       JOIN rxnorm.rxnconso rc ON rc.rxcui = rx.rxcui
+              WHERE r.ctgov_group_code LIKE 'E%'
+                AND rc.tty IN ('SCD', 'SBDG', 'SBDF', 'SBDC', 'SBD')
+                AND rc.sab = 'RXNORM'
+                AND re.subjects_affected > 0
+                AND r.nct_id IS NOT NULL
+                AND rx.rxcui NOT IN (1001007, 890964, 411, 11295, 1736009, 107129))
+ SELECT DISTINCT cte.nct_id,
+                 cte.id,
+                 cte.rxcui             AS rxcui,
+                 cte.str,
+                 cte.tty,
+                 r.rxcui               AS in_rxcui,
+                 r.str                 AS in_str,
+                 cast(NULL AS VARCHAR) AS dose
+ FROM rxnorm.rxnrel rel1
+          JOIN rxnorm.rxnrel rel2 ON rel1.rxcui2 = rel2.rxcui1
+          JOIN rxnorm.rxnconso r ON rel2.rxcui2 = r.rxcui
+          JOIN cte ON cte.rxcui = rel1.rxcui1
+ WHERE r.tty = 'IN'
+   AND r.sab = 'RXNORM');
 
 -- name: get_dose_1
 WITH cte AS (SELECT DISTINCT rgi.rxcui, substring(rx.str FROM '\s([0-9].*)$') AS dose
@@ -424,4 +447,5 @@ WHERE sab = 'RXNORM'
 -- name: find_terms_to_map
 SELECT DISTINCT id, clean
 FROM ctgov.drug_mapping
-WHERE clean IS NOT NULL;
+WHERE clean IS NOT NULL
+  AND length(clean) > 3;

@@ -3,3 +3,4 @@
 clinical_trials.iml
 .DS_Store
 Cargo.lock
+*.iml

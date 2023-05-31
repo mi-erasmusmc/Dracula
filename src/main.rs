@@ -5,15 +5,15 @@ use std::time::Instant;
 use chrono::Local;
 use config::{Config, File};
 use env_logger::Builder;
-use log::{info, LevelFilter};
+use log::{error, info, LevelFilter};
 
 use crate::arm_to_intervention::connect_arms_to_interventions;
-use crate::drug_mapping::{find_drugs, read_descriptions};
 use crate::meddra_mapping::find_pts;
 
 mod arm_to_intervention;
 mod db;
 mod drug_mapping;
+mod drug_mapping_chembl;
 mod meddra_mapping;
 
 #[tokio::main]
@@ -32,9 +32,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Initializing DB pool");
     let pool = db::init_db_pool(&settings);
 
-    find_drugs(&pool).await?;
-    connect_arms_to_interventions(&pool).await?;
-    read_descriptions(&pool).await?;
+    let drug_ref = settings
+        .get_string("drug_ref")
+        .expect("Could not read drug_ref from the settings file");
+    if drug_ref.eq("chembl") {
+        drug_mapping_chembl::find_drugs(&pool).await?;
+        connect_arms_to_interventions(&pool).await?;
+        drug_mapping_chembl::read_descriptions(&pool).await?;
+    } else if drug_ref.eq("rxnorm") {
+        drug_mapping::find_drugs(&pool).await?;
+        connect_arms_to_interventions(&pool).await?;
+        drug_mapping::read_descriptions(&pool).await?;
+    } else {
+        error!("Unkown value passed as drug_ref");
+        panic!(
+            "Passed invalid arg for drug_ref, you provided {:?} it must be chembl or rxnorm",
+            drug_ref
+        )
+    }
 
     let skip_meddra = settings
         .get_bool("skip_meddra")
