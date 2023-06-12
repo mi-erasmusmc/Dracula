@@ -156,7 +156,7 @@ pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
     info!("Creating the final result group to rxcui table");
     execute("drop_final_rg_in_table", &client, &queries).await;
     execute("create_final_rg_in_table", &client, &queries).await;
-    execute("get_dose_1", &client, &queries).await;
+    // execute("get_dose_1", &client, &queries).await;
 
     Ok(())
 }
