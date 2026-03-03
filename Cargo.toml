@@ -7,15 +7,15 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio-postgres = "0.7.8"
-tokio = { version = "1.27.0", features = ["full"] }
-deadpool-postgres = "0.10.5"
-deadpool = "0.9.5"
-config = "0.13.3"
-rawsql = "0.1.1"
+tokio-postgres = "0.7.16"
+tokio = { version = "1.50.0", features = ["full"] }
+deadpool-postgres = "0.14.1"
+deadpool = "0.13.0"
+config = "0.15.19"
+rawsql = "0.2.0"
 distance = "0.4.0"
-futures = "0.3.28"
-chrono = "0.4.24"
-env_logger = "0.10.0"
-log = "0.4.17"
+futures = "0.3.32"
+chrono = "0.4.44"
+env_logger = "0.11.9"
+log = "0.4.29"
 pbr = "1.1.1"
