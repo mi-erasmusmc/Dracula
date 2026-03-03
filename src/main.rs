@@ -36,15 +36,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .get_string("drug_ref")
         .expect("Could not read drug_ref from the settings file");
     if drug_ref.eq("chembl") {
+        info!("Mapping drugs with CHEMBL");
         drug_mapping_chembl::find_drugs(&pool).await?;
         connect_arms_to_interventions(&pool).await?;
         drug_mapping_chembl::read_descriptions(&pool).await?;
     } else if drug_ref.eq("rxnorm") {
+        info!("Mapping drugs to RxNorm");
         drug_mapping::find_drugs(&pool).await?;
         connect_arms_to_interventions(&pool).await?;
         drug_mapping::read_descriptions(&pool).await?;
     } else {
-        error!("Unkown value passed as drug_ref");
+        error!("Unknown value passed as drug_ref");
         panic!(
             "Passed invalid arg for drug_ref, you provided {:?} it must be chembl or rxnorm",
             drug_ref

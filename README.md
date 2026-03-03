@@ -2,52 +2,56 @@ Dracula - A Clinical Trials Drug - Adverse Event Mapper
 =======================
 
 **Dracula is a tool to be used in combination with the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/). It
-does two things: First, it generates an additional table called 'result_group_ingredient' that links the reported
-adverse events from the 'result_groups' table to an RxNorm ID of the drugs provided to the specific group for which this
-adverse event occurred. Second it adds a pt_code column to the reported_events table containing the MedDRA preferred
-term code for the specific adverse event.**
+does two things: First, it generates an additional table called `result_group_ingredient` that links the reported
+adverse events from the `result_groups` table to a standardized drug identifier for the drugs provided to the specific
+group in which this adverse event occurred. Second, it adds a `pt_code` column to the `reported_events` table
+containing the MedDRA preferred term code for each adverse event.**
 
-Note:
-The master branch of this project should work, but the project as whole is still under construction. Although a decent
-effort is made to make this mapping decent, Dracula is not perfect. Contributions, comments and suggestions are very
-much welcome.
+Note: Although a decent effort is made to produce accurate mappings, Dracula is not perfect. Contributions, comments
+and suggestions are very much welcome.
 
 ### REQUIREMENTS
 
-- Dracula builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/) system, you will need to download
-  and start that database before doing this :-)
+- Dracula builds on the [CTTI AACT database](https://aact.ctti-clinicaltrials.org/). You will need to download
+  and start that database before running this tool.
 
-- You will need the RxNORM database, in particular both the RXNCONSO table and the RXNREL table. The RxNorm data is
-  available
-  [here](https://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html) (db is free but registration is required).
-  The app expects the two tables to be located within a schema called 'rxnorm'.
+- You will need either RxNorm or ChEMBL as your drug reference database (configured via `drug_ref` in `Settings.toml`):
 
-- If you also to wish to perform additional standardization on the outcome side you require the MedDRA db. Some effort
-  is required to obtain the MedDRA db so this step is optional. If you do have the MedDRA db be sure it is in the same
-  db in a schema named 'meddra', we will be using the 'medhier' and 'llt' tables.
+  - **RxNorm**: you need the RXNCONSO and RXNREL tables, available
+    [here](https://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html) (free but registration required).
+    The app expects these tables in a schema called `rxnorm`. The `result_group_ingredient` table will contain
+    RxNorm CUIs.
 
-- To build and run the app you will need [Rust](https://www.rust-lang.org)
+  - **ChEMBL**: you need the ChEMBL database, available
+    [here](https://www.ebi.ac.uk/chembl/). The app expects the `molecule_dictionary`, `compound_structures`,
+    and `molecule_synonyms` tables in a schema called `chembl`. The `result_group_ingredient` table will contain
+    ChEMBL `molregno` values along with SMILES and InChI keys where available.
 
-- This app has been developed and tested using macOS, Postgres versions 13 - 14, and Rust versions 1.49 - 1.69
+- Optionally, for standardization of adverse event terms, you will need the MedDRA database. This step can be skipped
+  if you do not have access. If you do have the MedDRA db, place it in a schema named `meddra` — the `medhier`
+  and `llt` tables are used.
+
+- To build and run the app you will need [Rust](https://www.rust-lang.org).
+
+- This app has been developed and tested using macOS, Postgres versions 13–14, and Rust versions 1.49–1.82.
 
 ### HOW TO RUN
 
-- Make sure the db is configured in accordance to your needs in the Settings.toml file.
-
-- Use `cargo run --release` in the present folder to build and run the app.
-
-- Running time is approximately 1 hour.
+1. Configure your database connection and options in `Settings.toml`.
+2. Run `cargo run --release` from the project root.
+3. Running time is approximately 1 hour.
 
 ### OPTIONS
 
-There are two extra settings that you can configure in the `Settings.toml` file.
+All options are set in `Settings.toml`.
 
-1. *skip_meddra* If you want to skip the MedDRA step set this to true.
-2. *meddra_precision* The meddra normalization relies on some fuzzy matching. Tell Dracula how fuzzy you would like to
-   accept the results on a scale of 1-5 with 5 being super wild (wilder is also a bit slower).
-
-#### TODO:
-
-- This and that :-)
-
-
+| Setting | Description |
+|---|---|
+| `pg_host` | Postgres host |
+| `pg_port` | Postgres port |
+| `pg_user` | Postgres user |
+| `pg_password` | Postgres password |
+| `pg_dbname` | Name of the AACT database |
+| `drug_ref` | Drug reference database: `rxnorm` or `chembl` |
+| `skip_meddra` | Set to `true` to skip the MedDRA adverse event standardization step |
+| `meddra_precision` | Fuzziness of MedDRA term matching, 1 (strict) to 5 (loose). Only used when `skip_meddra` is `false` |

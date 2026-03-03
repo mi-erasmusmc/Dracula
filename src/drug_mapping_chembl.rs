@@ -20,6 +20,7 @@ pub async fn find_drugs(pool: &Pool) -> Result<(), Box<dyn Error>> {
     execute("drop_join_table", &client, &queries).await;
     execute("create_mapping_table", &client, &queries).await;
     execute("mapping_clean_index", &client, &queries).await;
+    execute("mapping_original_id_index", &client, &queries).await;
     execute("create_join_table", &client, &queries).await;
     execute("remove_junk", &client, &queries).await;
 
@@ -77,14 +78,20 @@ pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
     let chembl_drugs: Vec<Row> = all_chembl(&client, &queries).await;
     let mut reload = true;
     let mut mapping = client
-        .query("SELECT DISTINCT id, description as clean FROM ctgov.rg_desc_mapping WHERE description IS NOT NULL", &[])
+        .query(
+            "SELECT DISTINCT id, description as clean FROM ctgov.rg_desc_mapping WHERE description IS NOT NULL",
+            &[],
+        )
         .await
         .unwrap();
 
     for drug in chembl_drugs {
         if reload {
             mapping = client
-                .query("SELECT DISTINCT id, description as clean FROM ctgov.rg_desc_mapping WHERE description IS NOT NULL", &[])
+                .query(
+                    "SELECT DISTINCT id, description as clean FROM ctgov.rg_desc_mapping WHERE description IS NOT NULL",
+                    &[],
+                )
                 .await
                 .unwrap();
             reload = false;
@@ -100,7 +107,6 @@ pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
         }
         info!("Found matches, updating db");
         reload = true;
-        // removing trailing comma
         insert_values.pop();
         let q = format!(
             "INSERT INTO ctgov.description_mapping_rxcui(rg_desc_mapping_id,rxcui) VALUES {};",
@@ -129,8 +135,7 @@ pub async fn read_descriptions(pool: &Pool) -> Result<(), Box<dyn Error>> {
 
     info!("Creating the final result group to rxcui table");
     execute("drop_final_rg_in_table", &client, &queries).await;
-    execute("create_final_rg_in_table", &client, &queries).await;
-    // execute("get_dose_1", &client, &queries).await;
+    execute("create_final_rg_in_table_chembl", &client, &queries).await;
 
     Ok(())
 }
@@ -209,7 +214,6 @@ fn do_matching(
 ) {
     let drug: String = c.get("synonyms");
     let drug_with_spaces = format!(" {} ", drug);
-    info!("{}", drug_with_spaces);
     for m in mapping {
         let source: String = m.get("clean");
         if source.contains(&drug_with_spaces) {

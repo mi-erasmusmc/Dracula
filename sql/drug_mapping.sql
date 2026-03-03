@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS ctgov.drug_mapping_rxcui;
 -- name: create_mapping_table
 CREATE TABLE ctgov.drug_mapping AS
 SELECT row_number() OVER () AS id,
+       original_id,
        original,
        clean,
        occurrences,
@@ -19,7 +20,8 @@ FROM (WITH cte AS (SELECT r.nct_id
                      AND re.subjects_affected > 0
                      AND r.nct_id IS NOT NULL
                    GROUP BY r.nct_id)
-      SELECT lower(name)     AS original,
+      SELECT id              as original_id,
+             lower(name)     AS original,
              lower(name)     AS clean,
              count(*)        AS occurrences,
              'interventions' AS source
@@ -28,7 +30,18 @@ FROM (WITH cte AS (SELECT r.nct_id
       WHERE intervention_type NOT IN ('Device', 'Behavioral', 'Diagnostic Test')
       GROUP BY lower(name)
       UNION
-      SELECT lower(name)                 AS original,
+      SELECT id                          as original_id,
+             lower(description)          AS original,
+             lower(description)          AS clean,
+             count(*)                    AS occurrences,
+             'interventions_description' AS source
+      FROM ctgov.interventions i
+               JOIN cte ON cte.nct_id = i.nct_id
+      WHERE intervention_type NOT IN ('Device', 'Behavioral', 'Diagnostic Test')
+      GROUP BY lower(description)
+      UNION
+      SELECT id                          as original_id,
+             lower(name)                 AS original,
              lower(name)                 AS clean,
              count(*)                    AS occurrences,
              'interventions_other_names' AS source
@@ -36,7 +49,8 @@ FROM (WITH cte AS (SELECT r.nct_id
                JOIN cte ON cte.nct_id = i.nct_id
       GROUP BY lower(name)
       UNION
-      SELECT DISTINCT lower(title)    AS original,
+      SELECT DISTINCT id              as original_id,
+                      lower(title)    AS original,
                       lower(title)    AS clean,
                       count(*)        AS occurrences,
                       'design_groups' AS source
@@ -45,7 +59,8 @@ FROM (WITH cte AS (SELECT r.nct_id
                     ON cte.nct_id = dg.nct_id
       GROUP BY lower(title)
       UNION
-      SELECT DISTINCT lower(title)    AS original,
+      SELECT DISTINCT id              as original_id,
+                      lower(title)    AS original,
                       lower(title)    AS clean,
                       count(*)        AS occurrences,
                       'result_groups' AS source
@@ -57,6 +72,10 @@ FROM (WITH cte AS (SELECT r.nct_id
 -- name: mapping_clean_index
 CREATE INDEX mapping_clean_index
     ON ctgov.drug_mapping (clean);
+
+-- name: mapping_original_id_index
+CREATE INDEX mapping_original_id
+    ON ctgov.drug_mapping (original_id);
 
 
 -- name: create_join_table
@@ -218,10 +237,8 @@ DROP TABLE IF EXISTS ctgov.design_groups_rxnorm;
 CREATE TABLE ctgov.interventions_rxnorm AS (SELECT DISTINCT inv.nct_id, inv.id, inv.name, rx.rx_str, rx.rxcui
                                             FROM ctgov.drug_mapping_rxcui rx
                                                      JOIN ctgov.drug_mapping m ON rx.drug_mapping_id = m.id
-                                                     JOIN ctgov.interventions inv
-                                                          ON lower(inv.name) = m.original
-                                            WHERE inv.intervention_type NOT IN
-                                                  ('Device', 'Behavioral', 'Diagnostic Test'));
+                                                     JOIN ctgov.interventions inv ON inv.id = m.original_id
+                                            WHERE m.source IN ('interventions', 'interventions_description'));
 
 -- name: join_table_2
 CREATE TABLE ctgov.intervention_other_names_rxnorm AS (SELECT DISTINCT inv.nct_id,
@@ -422,6 +439,25 @@ UNION
           JOIN cte ON cte.rxcui = rel1.rxcui1
  WHERE r.tty = 'IN'
    AND r.sab = 'RXNORM');
+
+-- name: create_final_rg_in_table_chembl
+CREATE TABLE ctgov.result_group_ingredient AS
+SELECT DISTINCT r.nct_id,
+                r.id,
+                rx.rxcui                  AS molregno,
+                dict.pref_name            as pref_name,
+                struct.canonical_smiles   as smiles,
+                struct.standard_inchi_key as inchi_key
+FROM ctgov.result_groups r
+         JOIN ctgov.reported_events re ON r.nct_id = re.nct_id
+         JOIN ctgov.designs d ON r.nct_id = d.nct_id
+         JOIN ctgov.result_groups_rxnorm rx ON rx.id = r.id
+         JOIN chembl.molecule_dictionary dict on dict.molregno = rx.rxcui
+         LEFT JOIN chembl.compound_structures struct on struct.molregno = rx.rxcui
+WHERE r.ctgov_group_code LIKE 'E%'
+  AND re.subjects_affected > 0
+  AND r.nct_id IS NOT NULL;
+
 
 -- name: get_dose_1
 WITH cte AS (SELECT DISTINCT rgi.rxcui, substring(rx.str FROM '\s([0-9].*)$') AS dose
